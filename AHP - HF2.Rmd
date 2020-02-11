@@ -11,12 +11,7 @@ output:
     toc: yes
 ---
 
-```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE, cache = TRUE)
 
-setwd("~/Artigo-da-tese-de-vivian-master2-analytics/Artigo-da-tese-de-vivian/Analytics")
-
-```
 
 # Analytic Hierarchy Process (AHP)
 
@@ -33,54 +28,25 @@ setwd("~/Artigo-da-tese-de-vivian-master2-analytics/Artigo-da-tese-de-vivian/Ana
 
 **ETAPA 1 - PREPARAÇÃO DO ESTUDO**
 
-1. Fundamentação teórica para estabelecimento da métrica independente (X) e da métrica dependente (Y).
-
-2. Identificação de dados, universo e amostras experimentais.
-
-3. Coleta, limpeza, identificação de variáveis para compor as métricas.
-
-**ETAPA 2 - CALCULO E ANÁLISE DE CORRELAÇÃO DOS DADOS**
-
-4. Tabulação e cálculo das métricas.
-
-5. Aplicação dos métodos de correlação: Método de Person, Spearman e Kendall e conclusões para formação dos testes de hipótese.
-
-6. Formação da hipótese e das variáveis para realizar os testes de hipótese.
-
-7. Teste 1: Controle aleatório: teste de hipótese para verificar a qualidade dos dados e confirmar a hipótese Ho. 
-
-8. Teste 2: Grupo Ciência da computação: teste com amostra dos programas de pós-graduação de ciência da computação, para verificar a hipótese Ha e H1.
-
-9. Teste 3: Grupo Experimento: teste com amostra dos programas com diversidade acima da média, para verificação se esses programas possuem também produtividade acima da média.
-
-10. Teste 4: Grupo Experimento Aprofundado: teste com amostra de programas com diversidade e produtividade acima da média do universo, para confirmar o teste 3.
-
-**ETAPA 3 - ANÁLISE DOS RESULTADOS E CONCLUSÕES**
-
-11. Análise crítica dos resultados.
-
-12. Conclusões gerais sobre o estudo.
 
 
-```{r Import, echo=TRUE, message=FALSE, warning=FALSE}
-#Import Data
-library(readr)
+# Getting Data 
 
-Apps <- read_delim("Dados dos aplicativos 2013-2016.csv",";",escape_double = FALSE, trim_ws = TRUE)
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, cache = TRUE)
 
-Professors <- read_delim("docentes tratada.csv", ";", escape_double = FALSE, trim_ws = TRUE)
+setwd("~/Artigo-da-tese-de-vivian-master2-analytics/Artigo-da-tese-de-vivian/Analytics")
 
-Graduate_2016 <- read_delim("Programas PPG 2016.csv",";", escape_double = FALSE, trim_ws = TRUE)
+PioneiroLibra <- read_delim("PioneiroLibra.csv", ";", escape_double = FALSE, trim_ws = TRUE)
 
-AAtuacao <- read_delim("Areas_de_atuacao_docentes_25_06_2019.csv", ";", escape_double = FALSE, trim_ws = TRUE)
-
-
+WestCarina <- read_delim("~/Analytic Hierarchy Process/WestCarina.csv", ";", escape_double = FALSE, trim_ws = TRUE)
 
 ```
 
+# Libraries
 
+```{r libraries}
 
-```{r echo=TRUE}
 library(dplyr)
 library(plotly)
 library(ggplot2)
@@ -95,211 +61,125 @@ library(GGally)
 library(corrplot)
 library(corrgram)
 library(ppcor)
+library(tidyverse)
 
 ```
 
-## Organização e seleção dos dados
+# Normalization
 
-Essas são as variaveis e funções criadas para realizar seleção, organização e aplicação das métricas do estudo, nos dados.
+Scale: 1 - 6,being 1 a week point, 5 a strong point, and 6 means not responded
 
-a) Desenvolvidas funções para transformar variaveis em tabelas: função .Unianalysis
 
-As dados foram organizados nas seguintes variáveis abaixo:
+## Variables
 
-1. Variável **Area_Form_Prof_prog**: TabulaÇão de quantidade de area de formaÇão por programa.
+### CONFORT AND LEISURE ON NON-WORKING SHIFTS (ConfLeis)
 
-2. Variável **Perm_Prof_prog**: TabulaÇão de quatidade de professores por programas. Filtra somente os professores permanentes.
+* ON PLATFORM (CONFORT AND LEISURE ON NON-WORKING SHIFTS):   
+* ConfLeisWC: From West Carina
+* ConfleisPL: From Pioneiro Libra
 
-3. Variável **Tidy_frame**: Concatena as variáveis 1 e 2. 
+**Coluns:** VAR00022 until VAR00032.
 
-4. Variável **App_prog**: TabulaÇão dos aplicativos por programa.
+**Scale:** Never: 0.4 
+           Rarely: 0.6 
+           Sometimes: 0.8 
+           Almost always: 1.2 
+           Always: 2 
+           NR:0
 
-5. Variável **Tidy_frame2**: Concatena Aplicativos com as variáveis anteriores. Somente os programas que produziram aplicativos permanecem na amostra. 
+**Questionary location image**
+![](ConfLeis.JPG)
 
-6. Variável **Metric_frame**: Calcula as métricas da tese da Vivian:
+```{r explore}
 
-6.1: **Div_Prof_Perm**: Diversidade de formação dos professores permanentes (DFPP);
-  
-6.2: **Prod_App_prof**: Produtividade de aplicativo por professores permanentes (PAPP).
-  
-7. Variável **Metric_frame2**: concatena todas as variáveis anteriores com os metadados dos programas de pós-graduação
-
-7.1 Foi verificado que somente há um nivel nesta variável (Em funcionamento). Há diversas linhas sem dado. Verificar como tratar isso.
-  
-
-```{r Tidyng data, message=FALSE, warning=FALSE, echo=TRUE}
 # Function
 # Transform vector into a data frame with frequency of levels and proportion
 .Unianalysis = function (x) {
     y <- as.data.frame(as.table(table(x)))
-    y <- mutate(y, proportion = prop.table(y$Freq) *100)#Proportion
-    y <- arrange(y, desc(y$Freq))
-return(y)
+    y <- arrange(y, desc(y$x))
+    y <- mutate(y, Value = prop.table(y$Freq))
+       return(y)
 }
 
-#1. Area of Professors per program        
-Area_Form_Prof_prog <-
-         Professors %>% 
-        filter(seq_tipo_categoria_vinculo == 3)%>%
-        group_by(cod_programa) %>%
-        summarise(Area_Formacao_Prof = n_distinct(area_curso_formacao),
-                  Curso_Formacao_Prof = n_distinct(nome_curso_formacao)) %>%
-        arrange(desc(Curso_Formacao_Prof))
-dim(Area_Form_Prof_prog) # Dimensao da tabela
+.Calc_conv = function(x) {
+              for (i in 1:dim(x)[1]) {
+                for (j in 1:dim(x)[2]) {
+                     y <- transform(x$i$j, Scale = c(2, 0.8, 1.2, 0.4, 0.6))
+                     y <- mutate(y, Result = Value * Scale)
+           return(y)   
+                }
+              }
+            }
+       
+dimWC <- dim(WestCarina)
+dimPL <- dim(PioneiroLibra)
+
+#West Carina
+head(WestCarina)
+
+## Select variables of WC and PL
+ConfLeisWC <-
+        WestCarina %>% 
+        dplyr::select(VAR00005:VAR00006, VAR00022:VAR00028)
+ConfLeisPL <-
+        PioneiroLibra %>% 
+        dplyr::select(VAR00005:VAR00006, VAR00022:VAR00028)
+
+# Put together WC and PL
+Two_Platform <- rbind.data.frame(ConfLeisWC, ConfLeisPL)
+
+#Put variable names
+names(Two_Platform) <- c("CIA","Genre","Privacy", "Talk_t_colleagues", "Play_instrument",  "Read_book", "Watch_TV","Gim","O_activity")
+
+dim(Two_Platform)
+head(Two_Platform)
+
+#Analisy each column
+ConfLeis_Explo <- apply(Two_Platform,2,.Unianalysis)
+ConfLeis_Explo
+
+ConfLeis_Privacy <-  apply(ConfLeis_Explo, 2, .Calc_conv)
+
+#Analisy
+
+Privacy <-  
+  ConfLeis_Explo$Privacy %>%
+  transform(Scale = c(0.2, 0.08,0.12, 0.04,0.06)) %>%
+  mutate(Result = Value * Scale)
+Privacy       
 
 
-#1.1 Area de atuação (incluido em 11-10-19)
-Area_Atua_Prof_prog <-
-        AAtuacao%>% 
-        filter(seq_tipo_categoria_vinculo == 3)%>%
-        group_by(cod_programa) %>%
-        summarise(Q_AAtua = n_distinct(nro_id_cnpq),
-                  grande_area = n_distinct(grande_area),
-                  sub_area = n_distinct(sub_area),
-                  especialidade = n_distinct(especialidade)) %>%
-        mutate(Metric_AA_prof =  Q_AAtua / grande_area) %>%
-        arrange(desc(Metric_AA_prof))
-dim(Area_Atua_Prof_prog)
-        
-#2. Permanents Professors per Program        
-Perm_Prof_prog <-
-        Professors %>%
-        filter(seq_tipo_categoria_vinculo == 3)%>%
-        group_by(cod_programa) %>%
-        summarise(Professores_Perm = n_distinct(nro_id_cnpq)) %>%
-        arrange(desc(Professores_Perm))
-dim(Perm_Prof_prog)
-
-#3. Une codigo de programas com quantidade de professores e quantidade de area de formação
-Tidy_frame <- merge(Perm_Prof_prog, Area_Form_Prof_prog, all = TRUE)
-dim(Tidy_frame)
-
-#4. Apps per program        
-App_prog <-
-        Apps %>%
-        group_by(CD_PROGRAMA_IES)%>%
-        summarise(Apps = n_distinct(ID_ADD_PRODUCAO_INTELECTUAL)) %>%
-        arrange(desc(Apps))
-dim(App_prog)
-
-#5. Concatena Aplicativos com as variaveis anteriores
-Tidy_frame2 <- merge(App_prog, Tidy_frame, by.x="CD_PROGRAMA_IES", by.y="cod_programa", all.x = TRUE)
-dim(Tidy_frame2)
-
-Tidy_frame3 <- merge(Tidy_frame2, Area_Atua_Prof_prog, by.x="CD_PROGRAMA_IES", by.y="cod_programa", all.x = TRUE)
-
-dim(Tidy_frame3)
-
-## 6. Variavel Calcula as m?tricas da tese da Vivian
-  ## Div_Prof_Perm: Diversidade de formacao dos professores permanentes (DFPP)
-  ## Prod_App_prof: Produtividade de aplicativo por professores permanentes (PAPP)
-Metric_frame <-
-            Tidy_frame3%>%
-            group_by(CD_PROGRAMA_IES) %>%
-            mutate(Div_Prof_Perm = 
-                    ((Curso_Formacao_Prof + Metric_AA_prof) / Professores_Perm) * 100,      
-                    Prod_App_prof = 
-                      (Apps / Professores_Perm) * 100)
- ##Removendo as linhas que tenham NA
-Metric_frame <- na.omit(Metric_frame)
-
-dim(Metric_frame)
-
-## 7. Variavel concatena todas as vari?veis anteriores com os metadados dos programas de p?s-gradua??o
-Metric_frame2 <- merge(Metric_frame, 
-                       Graduate_2016, 
-                       by ="CD_PROGRAMA_IES", all.x = TRUE)
 
 
-dim(Metric_frame2)
 
 ```
 
 
-## Caracterização do universo de dados
+Two_Platform_by_CIA <-
+        ConfLeis_Explo %>% 
+        summarise(
+                  Talk_t_colleagues = n_distinct(Talk_t_colleagues),
+                  Read_book = n_distinct(Read_book),
+                  Play_instrument = n_distinct(Play_instrument)
+                  )
+       
+dim(ConfLeisWC)
 
-Na tabela abaixo, armazenada na variável **Contexto** está o total de programs de pós-graduação no Brasil que possuem ao menos 1 aplicativo produzido por docentes permanentes, no período entre 2013 e 2016. 
+## Create big data
 
-Todas as linhas com pelo menos uma variável faltante, utilizada para calcular as métricas, foram retiradas, pois valores nulos impossibilitam os testes de correlação. 
+```{r}
 
-Portanto a tabela **Contexto** é o universo de pesquisa. A seguir a descrição de cada coluna da tabela.
+#Select the variable columns
+ConfLeisWC1 <- c(WestCarina[1:dimWC[2], 5:6],  WestCarina[1:dimWC[2], 22:28])
+ConfLeisWC2 <- WestCarina[1:dimWC[2], 22:28]
+ConfLeisWC <- merge(ConfLeisWC1, ConfLeisWC2,all.x = TRUE)
 
-> Prog = Quantidade de programas
-
-> Prof_Perm = Quantidade de profesores permanente
-
-> Apps = Quantidade de aplicativos produzidos pelos professores permanentes
-
-> Curso_Form_Prof = Quantidade de cursos de formação dos professores permanentes
-
-> grande_area = Quantidade de grande areas de formação dos professores permanentes
-
-> Q_AAtua = Quantidade de áreas de atuação dos professores permanentes
-
-O universo  total deste estudo é apresentado na variável **Somatorio**, conforme ilustra a tabela abaixo.
-
-
-```{r dimensions}
-## Dimensão da tabela: linhas e colunas
-
-Contexto <-
-            Metric_frame2 %>%
-            group_by(NM_GRANDE_AREA_CONHECIMENTO, CD_PROGRAMA_IES) %>%
-            summarise(Prog = n_distinct(CD_PROGRAMA_IES), 
-                      Prof_Perm = sum(Professores_Perm),
-                      Apps = sum(Apps),
-                      Curso_Formacao_Prof = sum(Curso_Formacao_Prof), 
-                      grande_area = sum(grande_area),
-                      Q_AAtua = sum(Q_AAtua))
-
-Contexto <-
-        Contexto %>% 
-        group_by(NM_GRANDE_AREA_CONHECIMENTO) %>%  
-             summarise(Prog = sum(Prog), 
-                      Prof_Perm = sum(Prof_Perm),
-                      Apps = sum(Apps),
-                      Curso_Form_Prof = sum(Curso_Formacao_Prof), 
-                      grande_area = sum(grande_area),
-                      Q_AAtua = sum(Q_AAtua)) %>% 
-        arrange(desc(Prog)) 
-        
-            
-DT::datatable(Contexto)
-
-
-Somatorio <- apply(Contexto [, 2:7], MARGIN = 2, sum)
-
-DT::datatable(as.data.frame(Somatorio))
+# Dimentions of new data
+dim(ConfLeisWC)
 
 
 ```
 
-As variáveis descritas na tabela sumarizada acima comporam as métricas das variáveis X e Y, descritas a seguir:
-
-### Variável X
-
-Neste estudo a variável X (independente) **"Div_Prof_Perm"** da tabela **"Metric_Frame2"**, representa o perfil multi e interdisciplinar dos programas de pós-graduação do Brasil, entre os anos 2013-2016,que possuem ao menos 1 aplicativo produzido. Essa variável X é calculada da seguinte forma: 
-
-**X** = $DivProfPerm = (CursoFormacaoProf + MetricAAprof) / ProfessoresPerm) * 100$.
-
-A variável MetricAAprof, que compõe **X**, é calculada da seguinte forma:
-
-$MetricAAprof = QAAtua / grandearea$
-
-
-### Variável Y
-
-A variável Y (dependente) **"ProdAppprof"** da tabela **"MetricFrame2"**, representa a produção de aplicativos por professor permanente, dos programas de pós-graduação do Brasil, entre os anos 2013-2016, que possuem ao menos 1 aplicativo produzido.
-
-
-A variável "Produção de aplicativos dos professores permanentes" (**"ProdAppprof"**) é calculada da seguinte forma: 
-
-**Y** = $ProdAppprof = (Apps / ProfessoresPerm) * 100)$
-
-### Méticas Calculadas
-
-
-Abaixo a escala das duas variáveis, de acordo com o cálculo do universo.
 
 ```{r summary }
 
