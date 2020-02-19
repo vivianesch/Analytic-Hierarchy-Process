@@ -12,21 +12,11 @@ output:
 ---
 
 
-# Analytic Hierarchy Process (AHP)
+# Introduction
 
-Em desenvolvimento
-## Domain Background  
-
-Em desenvolvimento
 ## Study goals
 
-**Main Goal:** 
-
-Em desenvolvimento
-
 ## Methods and materials
-
-Em desenvolvimento
 
 
 ```{r setup, include=FALSE}
@@ -39,6 +29,7 @@ knitr::opts_chunk$set(echo = TRUE, cache = TRUE)
 ```{r libraries, cache=TRUE, include=FALSE}
 
 library(dplyr)
+library(plyr)
 library(plotly)
 library(ggplot2)
 library(tidyr)
@@ -56,10 +47,6 @@ library(tidyverse)
 
 ```
 
-## Normalization
-
-Scale: 1 - 6,being 1 a week point, 5 a strong point, and 6 means not responded
-
 ## Variables
 
 ### CONFORT AND LEISURE ON NON-WORKING SHIFTS (ConfLeis)
@@ -70,19 +57,14 @@ Scale: 1 - 6,being 1 a week point, 5 a strong point, and 6 means not responded
 
 **Coluns:** VAR00022 until VAR00032.
 
-**Scale:** Never: 0.4 
-           Rarely: 0.6 
-           Sometimes: 0.8 
-           Almost always: 1.2 
-           Always: 2 
-           NR:0
-
 **Questionary location image**
 ![](ConfLeis.JPG)
 
+# TIDYNG DATA
+
 ## Getting Data
 
-```{r}
+```{r getting}
 
 setwd("~/Analytic Hierarchy Process")
 
@@ -93,18 +75,11 @@ WestCarina <- read_delim("~/Analytic Hierarchy Process/WestCarina.csv", ";", esc
 # Function
 # Transform vector into a data frame with frequency of levels and proportion
 .Unianalysis = function (x) {
-    y <- as.data.frame(as.table(table(x)))
+    y <- as.data.frame(table(x))
     y <- arrange(y, desc(y$x))
-    y <- mutate(y, Value = prop.table(y$Freq) * 10)
-       return(y)
+         return(y)
 }
 
-.Calc_conv = function(x) {
-               y <- transform(x, Scale = c(2, 0.8, 1.2, 0.4, 0.6))
-               y <- mutate(y, Result = Value * Scale)
-               return(y)   
-}
-            
 dimWC <- dim(WestCarina)
 dimPL <- dim(PioneiroLibra)
 
@@ -116,84 +91,70 @@ glimpse(PioneiroLibra)
 
 ## Select variables of WC and PL from ConfLeis 
 
-```{r explore}
+```{r select}
 
 ## Select variables of WC and PL
 ConfLeisWC <-
         WestCarina %>% 
-        dplyr::select(VAR00005:VAR00006, VAR00022:VAR00028)
+        dplyr::select(VAR00022:VAR00028)
 ConfLeisPL <-
         PioneiroLibra %>% 
-        dplyr::select(VAR00005:VAR00006, VAR00022:VAR00028)
+        dplyr::select(VAR00022:VAR00028)
 
 
 ```
 
 ## Put together WC and PL 
 
-```{r}
+```{r  tidyng}
 
 # Put together WC and PL
 Two_Platform <- rbind.data.frame(ConfLeisWC, ConfLeisPL)
 
 #Put variable names
-names(Two_Platform) <- c("CIA","Genre","Privacy", "Talk_t_colleagues", "Play_instrument",  "Read_book", "Watch_TV","Gim","O_activity")
+names(Two_Platform) <- c("Privacy", "Talk_t_colleagues", "Play_instrument",  "Read_book", "Watch_TV","Gim","O_activity")
 
 dim(Two_Platform)
 
 ```
 
-## Analisy and tabulate each column
+## Tabulate each column
 
-```{r}
+```{r tabulate and reshape}
 
 #Analisy each column
 ConfLeis_Explo <- apply(Two_Platform,2,.Unianalysis)
-dim(ConfLeis_Explo)
 
+# Transform into dataframe
+dframe <- ldply(ConfLeis_Explo, data.frame)
 
-```
+# reshape tabulation
+Tidydata <- dframe %>%
+       reshape(v.names = "Freq", idvar = ".id", timevar="x", direction = "wide")
 
-## Scale Calculation
+# translate columns names
+names(Tidydata) <- c("Variables", "Freq.Always", "Freq.Rarely", "Freq.Almost_always", "Freq.Sometimes", "Freq.Not_answered")
 
-```{r}
-
-#Calculation of scale
-Privacy <-  .Calc_conv(ConfLeis_Explo[["Privacy"]])
-Play_instrument <-  .Calc_conv(ConfLeis_Explo$Play_instrument)
-Read_book <-  .Calc_conv(ConfLeis_Explo$Read_book)
-Gim <-  .Calc_conv(ConfLeis_Explo$Gim)
-O_activity <-  .Calc_conv(ConfLeis_Explo$O_activity)
-
-Privacy
-Play_instrument
-Read_book
-Gim
-O_activity
-
-
+#Tidy table
+DT::datatable(Tidydata)
+      
 
 ```
 
-## Final Score of ConfLeis
+# Normalization
+
+Scale: 1 - 6,being 1 a week point, 5 a strong point, and 6 means not responded
+
+**Scale:** Never: 0.4 
+           Rarely: 0.6 
+           Sometimes: 0.8 
+           Almost always: 1.2 
+           Always: 2 
+           NR:0
 
 ```{r}
 
-# Final Score
 
-FSP <- 5 - mean(Privacy$Result)
-FSP
-FSPI <- 5 - mean(Play_instrument$Result)
-FSPI
-FSRB <- 5 - mean(Read_book$Result)
-FSRB
-FSG <- 5 - mean(Gim$Result)
-FSG
-
-
-
-Final_Score <- mean(FSP, FSPI,FSRB,FSG)
-Final_Score 
 
 
 ```
