@@ -128,13 +128,14 @@ ConfLeis_Explo <- apply(Two_Platform,2,.Unianalysis)
 # Transform into dataframe
 dframe <- ldply(ConfLeis_Explo, data.frame)
 
+
 # reshape tabulation
 Tidydata <- dframe %>%
        reshape(v.names = "Freq", idvar = ".id", timevar="x", direction = "wide")
-
-# translate columns names
-names(Tidydata) <- c("Variables", "Freq.Always", "Freq.Rarely", "Freq.Almost_always", "Freq.Sometimes", "Freq.Not_answered")
-
+       
+# Save tidy table
+write.csv(Tidydata,"~/Analytic Hierarchy Process\\Tidydata.csv", row.names = FALSE)
+       
 #Tidy table
 DT::datatable(Tidydata)
       
